@@ -699,6 +699,8 @@ class HomeWidget(QWidget):
         self.hBoxLayout.addWidget(self.rightWidget, 6)
         self.hBoxLayout.setSpacing(20)
 
+        self._log_history: list[tuple[str, str]] = []
+
     def refresh_function_list(self):
         """应用功能排序后重置首页状态"""
         # 刷新功能选择
@@ -714,16 +716,52 @@ class HomeWidget(QWidget):
         # 次数清零
         self.basic_group.number_spinbox.setValue(0)
 
-    def ui_text_info_update_handle(self, msg: str, color: str):
+    def ui_text_info_update_handle(self, msg: str, level_or_color: str):
         """输出内容至文本框
 
         Args:
             msg (str): 文本内容
-            color (str): 文本颜色
+            level_or_color (str): 文本颜色或等级
         """
+        if len(self._log_history) >= 2000:
+            self._log_history.pop(0)
+        self._log_history.append((msg, level_or_color))
+
+        try:
+            level = LogColorLevel(level_or_color)
+            color = log_color(level)
+        except ValueError:
+            color = level_or_color
+
         widget = self.output_info_group.text_info
         widget.setTextColor(color)
         widget.append(msg)
         widget.ensureCursorVisible()
         widget.moveCursor(QTextCursor.MoveOperation.End)
         widget.setTextColor(log_color(LogColorLevel.INFO))
+
+    def refresh_log_colors(self):
+        """刷新文本框中所有历史日志的颜色"""
+        widget = self.output_info_group.text_info
+        scroll_bar = widget.verticalScrollBar()
+        old_value = scroll_bar.value()
+        is_at_bottom = old_value == scroll_bar.maximum()
+
+        widget.setUpdatesEnabled(False)
+        widget.clear()
+        for msg, level_or_color in self._log_history:
+            try:
+                level = LogColorLevel(level_or_color)
+                color = log_color(level)
+            except ValueError:
+                color = level_or_color
+            widget.setTextColor(color)
+            widget.append(msg)
+        widget.setTextColor(log_color(LogColorLevel.INFO))
+        widget.setUpdatesEnabled(True)
+
+        if is_at_bottom:
+            widget.ensureCursorVisible()
+            widget.moveCursor(QTextCursor.MoveOperation.End)
+        else:
+            scroll_bar.setValue(old_value)

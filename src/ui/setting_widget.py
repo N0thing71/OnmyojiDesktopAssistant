@@ -82,6 +82,33 @@ class SettingLanguageCard(AppCard):
             config.update("game_language", text)
 
 
+class SettingThemeCard(AppCard):
+    """设置项-应用主题"""
+
+    def __init__(self, parent=None):
+        super().__init__(
+            FluentIcon.BRUSH,
+            "应用主题",
+            "调整界面的浅色、深色或跟随系统模式",
+            parent,
+        )
+
+        self.combobox = ComboBox()
+        self.combobox.addItems(default_config.theme)
+        self.combobox.setFixedWidth(120)
+        self.combobox.currentIndexChanged.connect(self._config_update)
+
+        self.hBoxLayout.addWidget(self.combobox)
+
+    def _config_update(self):
+        text = self.combobox.currentText()
+        if text != config.user.theme:
+            config.update("theme", text)
+            from .fluent import apply_theme
+
+            apply_theme(text)
+
+
 class SettingXuanshangfengyinCard(AppCard):
     """设置项-悬赏封印"""
 
@@ -191,6 +218,10 @@ class ColorSettingRow(QWidget):
         value = config.user
         for key in self._config_key.split("."):
             value = getattr(value, key)
+        if self._config_key == "log_color.info" and value.lower() == DEFAULT_LOG_COLORS[LogColorLevel.INFO].lower():
+            from ..utils.log_color import log_color
+
+            return log_color(LogColorLevel.INFO)
         return value
 
     def _open_color_dialog(self):
@@ -205,7 +236,7 @@ class ColorSettingRow(QWidget):
         if w.exec():
             color = w.color.name()
             config.update(self._config_key, color)
-            self._update_preview_color(color)
+            self._update_preview_color(self._read_color())
 
     @staticmethod
     def _localize_dialog(w: ColorDialog) -> ColorDialog:
@@ -231,10 +262,14 @@ class ColorSettingRow(QWidget):
         """更新颜色预览块颜色"""
         self.preview.setStyleSheet(self._color_preview_style(color))
 
+    def refresh_preview(self):
+        """根据当前有效颜色刷新预览块"""
+        self._update_preview_color(self._read_color())
+
     def set_color(self, color: str):
         """写入指定颜色并同步配置与预览"""
         config.update(self._config_key, color)
-        self._update_preview_color(color)
+        self.refresh_preview()
 
     def _reset_color(self):
         """将当前行日志颜色重置为默认值"""
@@ -266,6 +301,11 @@ class SettingLoggerColorCard(ExpandGroupSettingCard):
         self.reset_button = PushButton("重置")
         self.reset_button.clicked.connect(self.reset_colors)
         self.card.addWidget(self.reset_button)
+
+    def refresh_previews(self):
+        """刷新所有颜色预览块"""
+        for row in self._color_rows.values():
+            row.refresh_preview()
 
     def reset_colors(self):
         """重置所有日志颜色为默认值"""
@@ -565,6 +605,7 @@ class SettingWidget(QWidget):
         self.setting_label.setFont(font)
 
         self.language_card = SettingLanguageCard()
+        self.theme_card = SettingThemeCard()
         self.xuanshangfengyin_card = SettingXuanshangfengyinCard()
         self.battle_theme_card = SettingBattleThemeCard()
         self.remember_force_zoom_card = SettingRememberForceZoomCard()
@@ -587,6 +628,7 @@ class SettingWidget(QWidget):
         self._layout = QVBoxLayout(self._widget)
         self._layout.addWidget(self.setting_label)
         self._layout.addWidget(self.language_card)
+        self._layout.addWidget(self.theme_card)
         self._layout.addWidget(self.xuanshangfengyin_card)
         self._layout.addWidget(self.battle_theme_card)
         self._layout.addWidget(self.remember_force_zoom_card)
@@ -601,11 +643,18 @@ class SettingWidget(QWidget):
         self._layout.addWidget(self.about_label)
         self._layout.addWidget(self.about_card)
 
+        self.setStyleSheet("SettingWidget { background-color: transparent; }")
+
         self.scroll_area = ScrollArea()
         self.scroll_area.setWidgetResizable(True)  # 使滚动区域可调整大小以适应内容
         self.scroll_area.setWidget(self._widget)
+        self.scroll_area.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+        self.scroll_area.viewport().setStyleSheet("background-color: transparent;")
+        self._widget.setObjectName("settingContentWidget")
+        self._widget.setStyleSheet("QWidget#settingContentWidget { background-color: transparent; }")
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(self.scroll_area)
 
     def refresh_force_zoom(self):

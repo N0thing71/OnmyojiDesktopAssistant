@@ -84,6 +84,7 @@ class MainWindow(FluentWindow):
         setting = config.user
 
         card.language_card.combobox.setCurrentText(setting.game_language)
+        card.theme_card.combobox.setCurrentText(setting.theme)
         card.xuanshangfengyin_card.combobox.setCurrentText(setting.xuanshangfengyin)
         card.interaction_mode_card.mode_combobox.setCurrentText(setting.interaction_mode.mode)
         card.interaction_mode_card.frontend_force_window_switch.setChecked(
@@ -105,6 +106,8 @@ class MainWindow(FluentWindow):
         """初始化信号"""
         ms.main.qmessagbox_update.connect(self.qmessagbox_update_handle)
         ms.main.ui_text_info_update.connect(self.homeInterface.ui_text_info_update_handle)
+        ms.main.ui_log_color_update.connect(self.homeInterface.refresh_log_colors)
+        ms.main.ui_log_color_update.connect(self.settingInterface.logger_color_card.refresh_previews)
         ms.main.is_fighting_update.connect(self.is_fighting)
         ms.main.ui_text_progress_update.connect(self.ui_text_progress_update_handle)
         ms.main.ui_xuanshangfengyin_update.connect(self.ui_xuanshangfengyin_update_handle)

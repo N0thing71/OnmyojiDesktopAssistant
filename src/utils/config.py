@@ -1,4 +1,10 @@
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        pass
 
 import yaml
 from pydantic import BaseModel, field_validator
@@ -45,8 +51,18 @@ class InteractionMode(StrEnum):
     BACKEND = "后台"
 
 
+class AppTheme(StrEnum):
+    """应用主题"""
+
+    AUTO = "跟随系统"
+    LIGHT = "浅色"
+    DARK = "深色"
+
+
 _game_language_list = [GameLanguage.CN, GameLanguage.JA]
 """游戏语言"""
+_app_theme_list = [AppTheme.AUTO, AppTheme.LIGHT, AppTheme.DARK]
+"""应用主题"""
 _update_download_list = [UpdateDownload.MIRROR, UpdateDownload.GITHUB]
 """下载线路"""
 _xuanshangfengyin_list = [
@@ -129,6 +145,8 @@ class DefaultConfig(BaseModel):
 
     game_language: list = _game_language_list
     """游戏服务器"""
+    theme: list = _app_theme_list
+    """应用主题"""
     auto_update: bool = True
     """自动更新"""
     update_download: list = _update_download_list
@@ -165,6 +183,8 @@ class UserConfig(BaseModel):
 
     game_language: str = GameLanguage.CN
     """游戏服务器"""
+    theme: str = AppTheme.AUTO
+    """应用主题"""
     auto_update: bool = True
     """自动更新"""
     update_download: str = UpdateDownload.MIRROR
@@ -324,6 +344,7 @@ class Config:
 
         if key.startswith("log_color."):
             from .log_color import update_log_colors
+            from .mysignal import global_ms as ms
 
             update_log_colors(
                 self.user.log_color.info,
@@ -331,6 +352,7 @@ class Config:
                 self.user.log_color.warn,
                 self.user.log_color.error,
             )
+            ms.main.ui_log_color_update.emit()
 
     def _check_outdated(self, data: dict) -> dict:
         """仅检查不符合配置项的部分，不存在的设置项可以通过UserConfig的model_dump()方法获取默认值"""

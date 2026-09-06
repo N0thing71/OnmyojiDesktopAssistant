@@ -19,7 +19,7 @@ def send_gui_msg(msg: str = "", level: LogColorLevel = LogColorLevel.INFO):
         level (LogColorLevel): 日志颜色等级
     """
     _now = datetime.now().strftime("%H:%M:%S")
-    ms.main.ui_text_info_update.emit(f"{_now} {msg}", log_color(level))
+    ms.main.ui_text_info_update.emit(f"{_now} {msg}", level.value)
 
 
 class CustomLogger(logging.Logger):

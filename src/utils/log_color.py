@@ -1,5 +1,11 @@
 import re
-from enum import StrEnum
+try:
+    from enum import StrEnum
+except ImportError:
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        pass
 
 
 class LogColorLevel(StrEnum):
@@ -33,7 +39,16 @@ def log_color(level: LogColorLevel) -> str:
     Returns:
         str: 当前颜色
     """
-    return _log_colors.get(level, DEFAULT_LOG_COLORS.get(level, "black"))
+    color = _log_colors.get(level, DEFAULT_LOG_COLORS.get(level, "black"))
+    if level == LogColorLevel.INFO and color.upper() == DEFAULT_LOG_COLORS[LogColorLevel.INFO].upper():
+        try:
+            from qfluentwidgets import isDarkTheme
+
+            if isDarkTheme():
+                return "#D4D4D4"
+        except Exception:
+            pass
+    return color
 
 
 def normalize_color(color: str, default: str) -> str:

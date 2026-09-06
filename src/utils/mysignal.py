@@ -35,8 +35,10 @@ class MySignals(QObject):
 
         Args:
             msg (str): 文本内容
-            color (str): 文本颜色
+            color (str): 文本颜色或等级
         """
+        ui_log_color_update = Signal()
+        """日志颜色配置或主题变化更新"""
         is_fighting_update = Signal(bool)
         """运行状态更新"""
         ui_text_progress_update = Signal(str)

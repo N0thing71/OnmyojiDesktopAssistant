@@ -1,18 +1,39 @@
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QColor, QIcon
 from PySide6.QtWidgets import QApplication, QHBoxLayout, QStackedWidget
-from qfluentwidgets import FluentIcon, NavigationInterface, NavigationItemPosition
+from qfluentwidgets import (
+    FluentIcon,
+    NavigationInterface,
+    NavigationItemPosition,
+    Theme,
+    isDarkTheme,
+    qconfig,
+    setTheme,
+)
 from qframelesswindow import FramelessWindow, StandardTitleBar
 
 from ..utils.application import ICO_RESOURCE_PATH
+from ..utils.config import AppTheme, config
 from .home_widget import HomeWidget
 from .setting_widget import SettingWidget
 from .window_manager_widget import WindowManagerWidget
 
 
+def apply_theme(theme_mode: str):
+    """应用主题设置"""
+    if theme_mode == AppTheme.DARK:
+        setTheme(Theme.DARK)
+    elif theme_mode == AppTheme.LIGHT:
+        setTheme(Theme.LIGHT)
+    else:
+        setTheme(Theme.AUTO)
+
+
 class Window(FramelessWindow):
     def __init__(self):
         super().__init__()
+        apply_theme(config.user.theme)
+
         self.setTitleBar(StandardTitleBar(self))
 
         self.hBoxLayout = QHBoxLayout(self)
@@ -27,6 +48,9 @@ class Window(FramelessWindow):
         self.initLayout()
         self.initNavigation()
         self.initWindow()
+
+        self.updateWindowStyle()
+        qconfig.themeChangedFinished.connect(self.onThemeChanged)
 
     def initLayout(self):
         self.hBoxLayout.setSpacing(0)
@@ -75,3 +99,44 @@ class Window(FramelessWindow):
     def onCurrentInterfaceChanged(self, index):
         widget = self.stackWidget.widget(index)
         self.navigationInterface.setCurrentItem(widget.objectName())
+
+    def onThemeChanged(self):
+        self.updateWindowStyle()
+        from ..utils.mysignal import global_ms as ms
+
+        ms.main.ui_log_color_update.emit()
+
+    def updateWindowStyle(self):
+        """根据当前主题更新窗口底色与标题栏按钮颜色"""
+        if isDarkTheme():
+            self.setStyleSheet(
+                "Window { background-color: rgb(32, 32, 32); } QStackedWidget { background-color: transparent; }"
+            )
+            if hasattr(self, "titleBar"):
+                self.titleBar.titleLabel.setStyleSheet(
+                    "QLabel{ background: transparent; font: 13px 'Segoe UI'; padding: 0 4px; color: white; }"
+                )
+                self.titleBar.minBtn.setNormalColor(QColor(255, 255, 255))
+                self.titleBar.minBtn.setHoverColor(QColor(255, 255, 255))
+                self.titleBar.maxBtn.setNormalColor(QColor(255, 255, 255))
+                self.titleBar.maxBtn.setHoverColor(QColor(255, 255, 255))
+                self.titleBar.closeBtn.setNormalColor(QColor(255, 255, 255))
+                self.titleBar.closeBtn.setHoverColor(QColor(255, 255, 255))
+        else:
+            self.setStyleSheet(
+                "Window { background-color: rgb(243, 243, 243); } QStackedWidget { background-color: transparent; }"
+            )
+            if hasattr(self, "titleBar"):
+                self.titleBar.titleLabel.setStyleSheet(
+                    "QLabel{ background: transparent; font: 13px 'Segoe UI'; padding: 0 4px; color: black; }"
+                )
+                self.titleBar.minBtn.setNormalColor(QColor(0, 0, 0))
+                self.titleBar.minBtn.setHoverColor(QColor(0, 0, 0))
+                self.titleBar.maxBtn.setNormalColor(QColor(0, 0, 0))
+                self.titleBar.maxBtn.setHoverColor(QColor(0, 0, 0))
+                self.titleBar.closeBtn.setNormalColor(QColor(0, 0, 0))
+                self.titleBar.closeBtn.setHoverColor(QColor(0, 0, 0))
+
+        if hasattr(self, "navigationInterface"):
+            self.navigationInterface.update()
+
