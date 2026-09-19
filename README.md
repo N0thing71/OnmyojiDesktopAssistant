@@ -1,8 +1,14 @@
+<div align="center">
+<img alt="OnmyojiDesktopAssistant" src="./docs/logo.jpg" width="200" height="200" />
+
 # OnmyojiDesktopAssistant
 
-![Python](https://img.shields.io/badge/python-3.11+-blue)
+<div>
+    <img alt="Python" src="https://img.shields.io/badge/python-3.11+-blue">
+    <a href="https://github.com/AquamarineCyan/OnmyojiDesktopAssistant/releases/latest"><img alt="GitHub release" src="https://img.shields.io/github/v/release/AquamarineCyan/OnmyojiDesktopAssistant"></a>
+</div>
 
-[![GitHub release (with filter)](https://img.shields.io/github/v/release/AquamarineCyan/OnmyojiDesktopAssistant)](https://github.com/AquamarineCyan/OnmyojiDesktopAssistant/releases/latest)
+</div>
 
 ## 简介
 
@@ -80,15 +86,18 @@
    - [【阴阳师】幼教级新桌面版安装及多开教程](https://www.bilibili.com/video/BV1rEUiBdEL6)
  - 新版与旧版仅窗口名称区别，其余功能一致。
 
+### 2. 下载
+   - 通过 [GitHub Releases](https://github.com/AquamarineCyan/OnmyojiDesktopAssistant/releases/latest) 下载最新版本 `OnmyojiDesktopAssistant-2.x.x.zip`。
+   - 通过 [Mirror 酱](https://mirrorchyan.com/zh/projects?rid=OnmyojiDesktopAssistant) 下载最新版本。国内访问更稳定更快速。
 
-###  2. 运行本软件
+   > [!NOTE]
+   > `Mirror酱` 是独立的第三方下载加速服务，需要付费使用，而非本软件收费。其运营成本由订阅收入支撑，部分收益将回馈项目开发者。欢迎订阅 CDK 享受高速下载，同时支持项目持续开发。
 
-  1. 前往 [releases](https://github.com/AquamarineCyan/OnmyojiDesktopAssistant/releases/latest)
-  2. 下载最新压缩包 `OnmyojiDesktopAssistant-2.x.x.zip`
-  3. 解压到英文路径，双击 `OnmyojiDesktopAssistant.exe` 运行。
+### 3. 启动
 
+解压到英文路径，双击 `OnmyojiDesktopAssistant.exe` 运行。
 
-### 3. 源码编译运行（不推荐）
+### 4. 源码编译运行（不推荐）
 
 <details><summary> 需要自行安装 Python 环境 </summary>
 
@@ -176,7 +185,7 @@
 
 ## 主界面
 
-![效果图](docs/效果图.png)
+<img src="docs/效果图.png" alt="效果图" width="500" />
 
 ## 后台交互模式
 
@@ -188,7 +197,7 @@
 3. 切换到 `窗口管理` 页签，点击 `预览` 按钮，能够显示游戏窗口截图，表明可以正常使用后台交互模式。
 4. 如果游戏窗口截图为黑屏，在 `设置` 页签切换 `后台截图模式` 后重试。如果所有的截图模式都显示黑屏，请改为 `前台交互模式`。
 
-![后台交互模式](docs/后台交互模式.png)
+<img src="docs/后台交互模式.png" alt="后台交互模式" width="500" />
 
 
 ## 多开
@@ -199,7 +208,7 @@
 2. 启动多个本软件，按照 `后台交互模式` 配置后台功能，并确保后台正常使用。
 2. 切换到 `窗口管理` 页签，点击 `预览` 按钮，选择对应窗口，确认每个软件检测到对应的游戏，并点击 `应用` 按钮。
 
-![多开示意图](docs/多开示意图.png)
+<img src="docs/多开示意图.png" alt="多开示意图" width="500" />
 
 
 ## 日服
@@ -232,10 +241,6 @@
 
     例如需要使用自定义的 `/resource/huodong/title.png` 文件，则新建 `/data/myresource/huodong/title.png` 即可。程序将优先使用用户给定的自定义素材。
 
-## 许可证
-
-本项目采用 GNU General Public License v3.0 许可证。详见 [LICENSE](LICENSE) 文件。
-
 ## 感谢
 
 [PaddlePaddle/PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) 文字识别库
@@ -243,6 +248,16 @@
 [zhiyiYo/PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets/tree/PySide6) 基于 PySide6 的 Fluent Design 风格组件库
 
 [打包PaddleOCR项目](https://www.paddleocr.ai/latest/version3.x/inference_deployment/others/packaging.html) Paddle官方打包demo
+
+## 声明
+
+- 本软件采用 **GNU General Public License v3.0** 许可证。详见 [LICENSE](LICENSE) 文件。
+
+- 本软件开源、免费，仅供学习交流使用。若您遇到商家使用本软件进行代练并收费，可能是设备与时间等费用，产生的问题及后果与本软件无关。
+
+- 收费商家：闲鱼用户 [小段爱玩阴阳师](https://www.goofish.com/personal?userId=3933099288)
+
+    <img src="docs/id小段爱玩阴阳师.jpg" alt="小段爱玩阴阳师" width="300" />
 
 ## 更新记录
 

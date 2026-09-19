@@ -6,6 +6,7 @@ from threading import Thread
 from PIL.ImageQt import ImageQt
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QWidget
 from qfluentwidgets import Dialog, InfoBar, InfoBarPosition, MessageBox
 
 from ..package import *
@@ -16,8 +17,8 @@ from ..ui.first_use_widget import FirstUseMessageBox
 from ..ui.fluent import Window as FluentWindow
 from ..ui.force_zoom_dialog import ForceZoomDialog
 from ..ui.home_widget import StackedWidgetIndex
+from ..ui.update_new_version_widget import UpdateNewVersionWidget
 from ..ui.update_record_widget import UpdateRecordWindow
-from ..ui.upgrade_new_version_widget import UpgradeNewVersionWidget
 from .announcement import check_announcements, show_all_announcements
 from .application import APP_NAME, APP_PATH, DEBUG_VERSION, VERSION
 from .config import GameLanguage, InteractionMode, config
@@ -26,14 +27,13 @@ from .event import event_thread
 from .function import is_Chinese_Path
 from .global_task import global_task
 from .keyboard_listener import KeyListenerThread
-from .log import log_clean_up, logger
+from .log import logger
 from .mysignal import global_ms as ms
 from .paddleocr import check_ocr_folder, ocr_manager
 from .restart import Restart
 from .screenshot import ScreenShot
 from .shortcut import create_desktop_shortcut
-from .update import get_update_info
-from .upgrade import upgrade
+from .update import update_manager
 from .window import GameWindow, window_manager
 
 
@@ -48,9 +48,24 @@ class MainWindow(FluentWindow):
         title = f"{APP_NAME} - v{VERSION}{debug_suffix}{suffix}{gpu_suffix}"
         self.setWindowTitle(title)
 
+        self.sub_windows: list[QWidget] = []  # 子窗口列表
+
         # 通过先启动GUI再初始化各控件，提高启动加载速度
         self.ui_init()
         self.software_init()
+
+    def open_sub_window(self, window: QWidget) -> QWidget:
+        """注册并打开独立子弹窗，统一管理以便关闭软件时一起关闭
+
+        Args:
+            window (QWidget): 要打开的弹窗
+
+        Returns:
+            QWidget: 传入的弹窗实例
+        """
+        self.sub_windows.append(window)
+        window.show()
+        return window
 
     def ui_init(self):
         """初始化UI"""
@@ -113,7 +128,7 @@ class MainWindow(FluentWindow):
         ms.main.ui_xuanshangfengyin_update.connect(self.ui_xuanshangfengyin_update_handle)
         ms.main.sys_exit.connect(self._exit_handle)
         ms.announcement.show_ui.connect(self.show_announcement_window)
-        ms.upgrade_new_version.show_ui.connect(self.show_upgrade_new_version_window)
+        ms.update_new_version.show_ui.connect(self.show_update_new_version_window)
 
     def _init_events(self):
         """初始化事件"""
@@ -151,11 +166,9 @@ class MainWindow(FluentWindow):
         logger.ui("程序初始化中，请稍候")
         if config.is_gpu:
             logger.ui_warn("当前为GPU版本，请勿与正式版混合使用，不支持自动下载更新包。")
-        log_clean_up()
 
         if not config.is_gpu:
-            upgrade.check_latest()
-        get_update_info()
+            update_manager.check_latest()
         check_announcements()
 
         if not self.software_selfcheck():
@@ -421,6 +434,7 @@ class MainWindow(FluentWindow):
                 QiLing.description()
                 set_stack(StackedWidgetIndex.QILING)
                 basic_group.number_spinbox.setEnabled(False)
+                advanced_stack.qiling_card.tancha_spinbox.setMaximum(999)
 
             case GameFunction.JUEXING:
                 JueXing.description()
@@ -704,10 +718,11 @@ class MainWindow(FluentWindow):
         global_task.stop()
 
         # 关闭子窗口
-        if hasattr(self, "update_record_widget"):
-            self.update_record_widget.close()
-        if hasattr(self, "upgrade_new_version_widget"):
-            self.upgrade_new_version_widget.close()
+        for child in self.sub_windows:
+            with suppress(RuntimeError):
+                if child is not None and child.isVisible():
+                    child.close()
+        self.sub_windows.clear()
 
         with suppress(Exception):
             logger.info("[EXIT]")
@@ -718,13 +733,10 @@ class MainWindow(FluentWindow):
         self.close()
 
     def show_announcement_window(self, announcements: list[dict]):
-        self.announcement_window = AnnouncementWindow(announcements)
-        self.announcement_window.show()
+        self.open_sub_window(AnnouncementWindow(announcements))
 
     def show_update_record_window(self):
-        self.update_record_widget = UpdateRecordWindow()
-        self.update_record_widget.show()
+        self.open_sub_window(UpdateRecordWindow())
 
-    def show_upgrade_new_version_window(self):
-        self.upgrade_new_version_widget = UpgradeNewVersionWidget()
-        self.upgrade_new_version_widget.show()
+    def show_update_new_version_window(self):
+        self.open_sub_window(UpdateNewVersionWidget())
