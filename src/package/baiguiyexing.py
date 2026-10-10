@@ -1,5 +1,8 @@
+import random
+
 from ..utils.adapter import Mouse
 from ..utils.application import SCREENSHOT_DIR_PATH
+from ..utils.coordinate import reference_size
 from ..utils.decorator import log_function_call
 from ..utils.event import event_thread
 from ..utils.exception import GUIStopException
@@ -7,7 +10,6 @@ from ..utils.function import random_num, random_point, sleep
 from ..utils.image import RuleImage
 from ..utils.log import logger
 from ..utils.point import Point
-from ..utils.window import window_manager
 from .base_package import BasePackage
 
 
@@ -16,7 +18,7 @@ class BaiGuiYeXing(BasePackage):
 
     scene_name = "百鬼夜行"
     resource_path = "baiguiyexing"
-    resource_list = [
+    resource_list = (
         "baiguiqiyueshu",  # 「百鬼契约书」
         "choose",  # 押选
         "jinru",  # 进入
@@ -25,7 +27,7 @@ class BaiGuiYeXing(BasePackage):
         "xingchongju_refresh",  # 星重聚刷新
         "yaoqing",  # 邀请好友
         "yaoqing_prompt",  # 邀请提示
-    ]
+    )
 
     def __init__(self, n: int = 0, flag_screenshot: bool = False):
         super().__init__(n)
@@ -144,20 +146,24 @@ class BaiGuiYeXing(BasePackage):
     def fighting(self):
         """砸豆子"""
         sleep(4)  # 等待进入
-        i = 1
-        for beans_left in range(600, 0, -5):
+        time_left: int = 1600  # 避免多次打到豆子buff
+
+        for beans_left in range(time_left, 0, -5):
             if bool(event_thread):
                 raise GUIStopException
 
-            sleep_max = max(0.3, (beans_left - 4 * i) / 600.0)
-            i += 1
-            sleep(0.15, sleep_max)
+            ratio = beans_left / time_left
+            mean = 0.23 + 0.7 * ratio  # 均值随豆子减少而下降
+            sigma = 0.05 + 0.15 * ratio  # 标准差也随豆子减少而收窄
+            sleep_max = random.gauss(mean, sigma)  # 高斯分布模拟手感
+            sleep_max = max(0.1, min(sleep_max, 1))  # 截断防止极端值
+            sleep(0.12, sleep_max)
             # 屏幕中心区域
             point = random_point(
                 60,
-                window_manager.current.client_width - 120,
+                reference_size()[0] - 120,
                 300,
-                window_manager.current.client_height - 100,
+                reference_size()[1] - 100,
             )
             Mouse.click(point, duration=0.25)
             result = RuleImage(self.IMAGE_FINISH)
@@ -180,10 +186,11 @@ class BaiGuiYeXing(BasePackage):
             if result.match():
                 logger.ui("结束")
                 point = result.random_point()
-                sleep(2)
+                sleep()
                 if self.flag_screenshot:
                     self.screenshot()
                     logger.ui("「百鬼契约书」已截图")
+                sleep()
                 Mouse.click(point)
                 return
 
@@ -208,5 +215,6 @@ class BaiGuiYeXing(BasePackage):
             self.choose()
             self.fighting()
             self.done()
-            sleep(2)
+            sleep()
             self.finish()
+            sleep(2)  # 避免太快点击无法识别邀请按钮

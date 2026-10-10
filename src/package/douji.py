@@ -1,3 +1,5 @@
+import time
+
 from ..utils.adapter import Mouse
 from ..utils.event import event_thread
 from ..utils.exception import CustomException, GUIStopException
@@ -37,6 +39,7 @@ class DouJi(BasePackage):
         self.OCR_VICTORY = self.get_ocr_asset("victory")
         self.OCR_FAIL = self.get_ocr_asset("fail")
         self.OCR_LEVEL_UP = self.get_ocr_asset("level_up")
+        self.OCR_SHARE = self.get_ocr_asset("share")
 
     def get_current_score(self):
         try:
@@ -61,6 +64,7 @@ class DouJi(BasePackage):
 
     def fighting_once(self):
         _flag = False
+        msg_title: bool = True
         self.current_asset_list = [
             self.OCR_TITLE,
             self.OCR_FIGHT,
@@ -69,6 +73,8 @@ class DouJi(BasePackage):
             self.OCR_INTENTIONAL,
             self.OCR_VICTORY,
             self.OCR_FAIL,
+            self.OCR_SHARE,
+            self.global_assets.OCR_CLICK_AND_CONTINUE,
         ]
         self.log_current_asset_list()
 
@@ -76,7 +82,7 @@ class DouJi(BasePackage):
             if bool(event_thread):
                 raise GUIStopException
 
-            sleep()
+            time.sleep(1) 
             result = ocr_match_once(self.current_asset_list)
             if result is None:
                 for fail_img in self.global_assets.ALL_FAIL_IMAGES:
@@ -127,24 +133,37 @@ class DouJi(BasePackage):
 
                 case self.OCR_INTENTIONAL.name:
                     logger.ui("自动施放技能")
+                    sleep()
                     Mouse.click(result.match_result.center)
                     sleep(4)
 
                 # 万一对面直接退了呢
                 case self.global_assets.OCR_CLICK_AND_CONTINUE.name:
                     logger.ui("点击屏幕继续")
+                    sleep()
                     Mouse.click(result.match_result.center)
                     self.done()
                     return
 
                 case self.OCR_VICTORY.name:
                     logger.ui("胜利")
+                    sleep()
+                    Mouse.click(result.match_result.center)
+                    self.done()
+                    return
+
+                case self.OCR_SHARE.name:
+                    logger.ui("分享")
+                    sleep()
+                    Mouse.click(result.match_result.center)
+                    sleep()
                     Mouse.click(result.match_result.center)
                     self.done()
                     return
 
                 case self.OCR_FAIL.name:
                     logger.ui_warn("失败")
+                    sleep(3)  # 失败多等一会，对面的阴阳师特效炸裂
                     Mouse.click(result.match_result.center)
                     self.done()
                     return
@@ -168,5 +187,6 @@ class DouJi(BasePackage):
                 logger.ui("周奖励")
                 weekly_rewards += 1
 
+            # 段位上升
             if self.check_click(self.global_assets.IMAGE_CLOSE, timeout=5):
                 logger.ui("段位上升")

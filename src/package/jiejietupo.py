@@ -34,9 +34,9 @@ class LiaoTuPoFullException(CustomException):
 class JieJieTuPo(BasePackage):
     """结界突破"""
 
-    scene_name: str = "结界突破"
-    resource_path: str = "jiejietupo"
-    resource_list: list = [
+    scene_name = "结界突破"
+    resource_path = "jiejietupo"
+    resource_list = (
         "fail",  # 失败
         "fangshoujilu",  # 防守记录-个人突破
         "geren",  # 个人突破
@@ -54,7 +54,7 @@ class JieJieTuPo(BasePackage):
         "xunzhang_4",  # 勋章数4
         "xunzhang_5",  # 勋章数5
         "yinyangliao",  # 阴阳寮突破
-    ]
+    )
 
     @log_function_call
     def __init__(self, n: int = 0) -> None:
@@ -115,6 +115,8 @@ class JieJieTuPo(BasePackage):
                 _msg_title = False
                 self.title_error_msg()
 
+            self.sleep_interval()
+
     def fighting_into(self, x0: int, y0: int) -> None:
         """点击进入战斗
 
@@ -142,9 +144,9 @@ class JieJieTuPo(BasePackage):
 
     def fighting_proactive_failure_once(self):
         """主动失败一次"""
-        KeyBoard.esc()
+        KeyBoard.esc()  # 桌面版=ESC，模拟器=鼠标侧键返回
         sleep()
-        KeyBoard.enter()
+        self.confirm(timeout=3)  # 桌面版=回车，模拟器=OCR 点击「确认」
         logger.ui("手动退出")
 
 
@@ -423,7 +425,7 @@ class JieJieTuPoGeRen(JieJieTuPo):
 
             self.check_click(self.IMAGE_FIGHT_AGAIN, timeout=5)
             sleep()
-            KeyBoard.enter()
+            self.confirm()
 
     def refresh(self) -> None:
         """刷新"""
@@ -546,7 +548,7 @@ class JieJieTuPoGeRen(JieJieTuPo):
                     else:
                         self.check_click(self.IMAGE_FIGHT_AGAIN)
                         sleep(2)
-                        KeyBoard.enter()
+                        self.confirm()
                         sleep(2)
                         self.auto_ready()
 
@@ -639,7 +641,7 @@ class JieJieTuPoYinYangLiao(JieJieTuPo):
                 if RuleImage(self.IMAGE_JINGONG).match():
                     logger.ui_warn("当前结界已被攻破")
                     i += 1
-                    KeyBoard.esc()
+                    KeyBoard.esc()  # 取消选中：桌面版=ESC，模拟器=鼠标侧键返回
                     sleep(2)
                     continue
                 flag = 1 if self.check_finish() else 0

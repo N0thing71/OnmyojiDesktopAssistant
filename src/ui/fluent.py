@@ -102,9 +102,9 @@ class Window(FramelessWindow):
 
     def onThemeChanged(self):
         self.updateWindowStyle()
-        from ..utils.mysignal import global_ms as ms
+        from ..utils.signals import signal_manager
 
-        ms.main.ui_log_color_update.emit()
+        signal_manager.main.ui_log_color_update.emit()
 
     def updateWindowStyle(self):
         """根据当前主题更新窗口底色与标题栏按钮颜色"""

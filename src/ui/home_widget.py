@@ -1,7 +1,7 @@
 from enum import Enum
 
 from PySide6.QtCore import Qt, QUrl
-from PySide6.QtGui import QDesktopServices, QTextCursor
+from PySide6.QtGui import QColor, QDesktopServices, QTextBlockFormat, QTextCursor
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
@@ -25,7 +25,7 @@ from qfluentwidgets import (
     ToolTipPosition,
 )
 
-from ..package.types import GameFunction, MiWenMode, QiLing, Yingjie
+from ..package.types import GameFunction, MiWenMode, QiLing, XiaJianAnYuMode, Yingjie
 from ..utils.application import SCREENSHOT_DIR_PATH
 from ..utils.config import config
 from ..utils.log_color import LogColorLevel, log_color
@@ -46,6 +46,7 @@ class StackedWidgetIndex(Enum):
     HUIJUAN = 7
     MIWEN = 8
     BAIGUIYEXING = 9
+    XIAJIANANYU = 10
 
 
 class HomeWidget(QWidget):
@@ -593,6 +594,27 @@ class HomeWidget(QWidget):
                     screenshot_dir.mkdir(parents=True)
                 QDesktopServices.openUrl(QUrl.fromLocalFile(str(screenshot_dir)))
 
+        class AdvancedXiaJianAnYuCard(HeaderCardWidget):
+            """高级设置-狭间暗域"""
+
+            id = StackedWidgetIndex.XIAJIANANYU.value
+
+            def __init__(self, parent=None):
+                super().__init__(parent)
+                self.setTitle("高级设置")
+                self.setBorderRadius(8)
+                self.headerView.setFixedHeight(GroupHeaderCardWidgetHeaderViewHeight)
+
+                self.combobox = ComboBox()
+                self.combobox.addItems([item.value for item in XiaJianAnYuMode])
+
+                self.vBoxLayout = QVBoxLayout()
+                self.vBoxLayout.setSpacing(10)
+                self.vBoxLayout.addWidget(self.combobox)
+                self.vBoxLayout.addStretch()
+
+                self.viewLayout.addLayout(self.vBoxLayout)
+
         def __init__(self, parent=None):
             super().__init__(parent=parent)
 
@@ -605,6 +627,7 @@ class HomeWidget(QWidget):
             self.huijuan_card = self.AdvancedHuiJuanCard()
             self.miwen_card = self.AdvancedMiWenCard()
             self.baiguiyexing_card = self.AdvancedBaiGuiYeXingCard()
+            self.xiajiananyu_card = self.AdvancedXiaJianAnYuCard()
 
             self.addWidget(QWidget())
 
@@ -618,6 +641,7 @@ class HomeWidget(QWidget):
                 self.huijuan_card,
                 self.miwen_card,
                 self.baiguiyexing_card,
+                self.xiajiananyu_card,
             ]
 
             for card in sorted(card_instances, key=lambda x: type(x).id):
@@ -642,6 +666,8 @@ class HomeWidget(QWidget):
 
             self.text_info = TextBrowser()
             self.text_info.setReadOnly(True)
+            # 时间戳对齐缩进（像素）：基于初始化时的控件字体实测
+            self.text_info_indent = self.text_info.fontMetrics().horizontalAdvance("00:00:00 ")
 
             self.vBoxLayout = QVBoxLayout()
             self.hBoxLayout = QHBoxLayout()
@@ -716,13 +742,40 @@ class HomeWidget(QWidget):
         # 次数清零
         self.basic_group.number_spinbox.setValue(0)
 
-    def ui_text_info_update_handle(self, msg: str, level_or_color: str):
+    def _insert_log_msg(self, msg: str, color: str):
+        widget = self.output_info_group.text_info
+        lines = msg.splitlines()
+        if not lines:
+            return
+        cursor = widget.textCursor()
+        cursor.movePosition(QTextCursor.MoveOperation.End)
+        char_fmt = cursor.charFormat()
+        char_fmt.setForeground(QColor(color))
+        cursor.setCharFormat(char_fmt)
+
+        if not widget.document().isEmpty():
+            cursor.insertBlock(QTextBlockFormat(), char_fmt)
+        cursor.insertText(lines[0])
+        if len(lines) > 1:
+            block_fmt = QTextBlockFormat()
+            block_fmt.setLeftMargin(self.output_info_group.text_info_indent)
+            for line in lines[1:]:
+                cursor.insertBlock(block_fmt, char_fmt)
+                cursor.insertText(line)
+
+        widget.ensureCursorVisible()
+        widget.moveCursor(QTextCursor.MoveOperation.End)
+
+    def ui_text_info_appended_handle(self, msg: str, level_or_color: str):
         """输出内容至文本框
 
         Args:
             msg (str): 文本内容
             level_or_color (str): 文本颜色或等级
         """
+        if not msg:
+            return
+
         if len(self._log_history) >= 2000:
             self._log_history.pop(0)
         self._log_history.append((msg, level_or_color))
@@ -733,12 +786,7 @@ class HomeWidget(QWidget):
         except ValueError:
             color = level_or_color
 
-        widget = self.output_info_group.text_info
-        widget.setTextColor(color)
-        widget.append(msg)
-        widget.ensureCursorVisible()
-        widget.moveCursor(QTextCursor.MoveOperation.End)
-        widget.setTextColor(log_color(LogColorLevel.INFO))
+        self._insert_log_msg(msg, color)
 
     def refresh_log_colors(self):
         """刷新文本框中所有历史日志的颜色"""
@@ -755,9 +803,7 @@ class HomeWidget(QWidget):
                 color = log_color(level)
             except ValueError:
                 color = level_or_color
-            widget.setTextColor(color)
-            widget.append(msg)
-        widget.setTextColor(log_color(LogColorLevel.INFO))
+            self._insert_log_msg(msg, color)
         widget.setUpdatesEnabled(True)
 
         if is_at_bottom:

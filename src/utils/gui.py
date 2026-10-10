@@ -10,7 +10,7 @@ from PySide6.QtWidgets import QWidget
 from qfluentwidgets import Dialog, InfoBar, InfoBarPosition, MessageBox
 
 from ..package import *
-from ..package.types import GameFunction, MiWenMode
+from ..package.types import GameFunction, MiWenMode, XiaJianAnYuMode
 from ..ui import icon_rc  # noqa: F401
 from ..ui.announcement_widget import AnnouncementWindow
 from ..ui.first_use_widget import FirstUseMessageBox
@@ -28,11 +28,12 @@ from .function import is_Chinese_Path
 from .global_task import global_task
 from .keyboard_listener import KeyListenerThread
 from .log import logger
-from .mysignal import global_ms as ms
+from .message import MessageBoxPayload
 from .paddleocr import check_ocr_folder, ocr_manager
 from .restart import Restart
 from .screenshot import ScreenShot
 from .shortcut import create_desktop_shortcut
+from .signals import signal_manager
 from .update import update_manager
 from .window import GameWindow, window_manager
 
@@ -78,7 +79,7 @@ class MainWindow(FluentWindow):
         self._init_events()
 
         self.key_listener = KeyListenerThread()
-        ms.main.key_pressed.connect(self._shortcut_handle)
+        signal_manager.main.key_pressed.connect(self._shortcut_handle)
         self.key_listener.start()
 
         # 首次启动提示弹窗
@@ -119,16 +120,16 @@ class MainWindow(FluentWindow):
 
     def _init_signals(self):
         """初始化信号"""
-        ms.main.qmessagbox_update.connect(self.qmessagbox_update_handle)
-        ms.main.ui_text_info_update.connect(self.homeInterface.ui_text_info_update_handle)
-        ms.main.ui_log_color_update.connect(self.homeInterface.refresh_log_colors)
-        ms.main.ui_log_color_update.connect(self.settingInterface.logger_color_card.refresh_previews)
-        ms.main.is_fighting_update.connect(self.is_fighting)
-        ms.main.ui_text_progress_update.connect(self.ui_text_progress_update_handle)
-        ms.main.ui_xuanshangfengyin_update.connect(self.ui_xuanshangfengyin_update_handle)
-        ms.main.sys_exit.connect(self._exit_handle)
-        ms.announcement.show_ui.connect(self.show_announcement_window)
-        ms.update_new_version.show_ui.connect(self.show_update_new_version_window)
+        signal_manager.main.message_box_requested.connect(self.message_box_requested_handle)
+        signal_manager.main.ui_text_info_appended.connect(self.homeInterface.ui_text_info_appended_handle)
+        signal_manager.main.ui_log_color_update.connect(self.homeInterface.refresh_log_colors)
+        signal_manager.main.ui_log_color_update.connect(self.settingInterface.logger_color_card.refresh_previews)
+        signal_manager.main.is_fighting_changed.connect(self.is_fighting)
+        signal_manager.main.ui_text_progress_changed.connect(self.ui_text_progress_changed_handle)
+        signal_manager.main.xuanshangfengyin_detected.connect(self.xuanshangfengyin_detected_handle)
+        signal_manager.main.sys_exit.connect(self._exit_handle)
+        signal_manager.announcement.show_ui.connect(self.show_announcement_window)
+        signal_manager.update_new_version.show_ui.connect(self.show_update_new_version_window)
 
     def _init_events(self):
         """初始化事件"""
@@ -198,17 +199,15 @@ class MainWindow(FluentWindow):
         global_task.add(XuanShangFengYin().check_task)
         global_task.start()
 
-    def qmessagbox_update_handle(self, level: str, msg: str):
-        # TODO 弹窗类型
-        # TODO 弹窗内容
-        if level == "ERROR":
-            message_box = MessageBox("错误", msg, self)
+    def message_box_requested_handle(self, payload: MessageBoxPayload):
+        if payload.level == MessageBoxPayload.Level.ERROR:
+            message_box = MessageBox("错误", payload.content, self)
             message_box.yesButton.setText("确定")
             message_box.hideCancelButton()  # 隐藏取消按钮
             message_box.exec()
 
-        elif level == "question":
-            if msg == "强制缩放":
+        elif payload.level == MessageBoxPayload.Level.QUESTION:
+            if payload.action == MessageBoxPayload.Action.FORCE_ZOOM:
                 logger.error("游戏窗口大小不匹配")
 
                 dialog = ForceZoomDialog()
@@ -220,27 +219,33 @@ class MainWindow(FluentWindow):
                 else:
                     logger.info("用户拒绝强制缩放")
 
-            elif msg == "更新重启":
+            elif payload.action == MessageBoxPayload.Action.UPDATE_RESTART:
                 logger.info("提示：更新重启")
                 title = "检测到更新包"
-                content = "是否更新重启，如有自己替换的素材，请在取消后手动解压更新包"
+                content = "是否更新重启？\n如有自己替换的素材，请在取消后手动解压更新包。"
                 dialog = Dialog(title, content)
 
                 if dialog.exec():
                     logger.info("用户接受更新重启")
-                    Thread(target=upgrade.restart, name="upgrade_restart", daemon=True).start()
+                    Thread(target=update_manager.restart, name="update_manager_restart", daemon=True).start()
                 else:
                     logger.info("用户拒绝更新重启")
 
-    def ui_text_progress_update_handle(self, msg: str):
+            else:
+                logger.warning(f"未处理的弹窗操作标识: {payload.action}")
+
+        else:
+            logger.warning(f"未处理的弹窗级别: {payload.level}")
+
+    def ui_text_progress_changed_handle(self, msg: str):
         """输出内容至文本框`完成情况`
 
-        参数:
+        Args:
             msg (str): 文本
         """
         self.homeInterface.output_info_group.progress_text.setText(msg)
 
-    def ui_xuanshangfengyin_update_handle(self, title: str, content: str):
+    def xuanshangfengyin_detected_handle(self, title: str, content: str):
         """悬赏封印通知（右上角 InfoBar）
 
         Args:
@@ -266,7 +271,7 @@ class MainWindow(FluentWindow):
         """
         # 中文路径
         if is_Chinese_Path():
-            ms.main.qmessagbox_update.emit("ERROR", "请在英文路径打开！")
+            signal_manager.main.message_box_requested.emit(MessageBoxPayload.error("请在英文路径打开！"))
             return False
 
         # 资源文件夹完整度
@@ -322,7 +327,7 @@ class MainWindow(FluentWindow):
             if not Path(config.resource_dir / P.resource_path).exists():
                 _msg = f"资源文件夹 {config.resource_dir} 不存在！"
                 logger.ui_error(_msg)
-                ms.main.qmessagbox_update.emit("ERROR", _msg)
+                signal_manager.main.message_box_requested.emit(MessageBoxPayload.error(_msg))
                 return False
 
             # 检查资源文件
@@ -462,6 +467,11 @@ class MainWindow(FluentWindow):
                 set_stack(StackedWidgetIndex.MIWEN)
                 basic_group.set_number_spinbox_value(10, 1, 10)
                 MiWen.description()
+
+            case GameFunction.XIAJIANANYU:
+                set_stack(StackedWidgetIndex.XIAJIANANYU)
+                basic_group.number_spinbox.setEnabled(False)
+                XiaJianAnYu.description()
 
     def _app_start(self):
         # 没有选功能前禁止通过快捷键启动程序
@@ -615,6 +625,11 @@ class MainWindow(FluentWindow):
                 mode = MiWenMode(card.combobox.currentText())
                 MiWen(n=selected_number, mode=mode).task_start()
 
+            case GameFunction.XIAJIANANYU:
+                card = advanced_stack.xiajiananyu_card
+                mode = XiaJianAnYuMode(card.combobox.currentText())
+                XiaJianAnYu(mode=mode).task_start()
+
     def _app_stop(self):
         event_thread.set()
         logger.ui("停止中，请稍候")
@@ -653,7 +668,7 @@ class MainWindow(FluentWindow):
         combobox.clear()
         if game_window_list:
             for item in game_window_list:
-                combobox.addItem(f"{item.title} - {item.handle}", userData=item.handle)  # 存储窗口句柄
+                combobox.addItem(item.label, userData=item.handle)  # 存储窗口句柄
             combobox.setCurrentIndex(0)
 
             logger.info(f"刷新窗口列表，当前窗口数量：{len(game_window_list)}")
@@ -678,6 +693,9 @@ class MainWindow(FluentWindow):
             handle = int(data)
             logger.info(f"当前窗口：{handle}")
             image = ScreenShot(handle=handle).get_image()
+            if image is None:
+                logger.ui_error("窗口预览失败：截图不可用")
+                return
             qimage = ImageQt(image)
             pixmap = QPixmap.fromImage(qimage)
             # 缩放图像以适应预览区域
@@ -694,7 +712,7 @@ class MainWindow(FluentWindow):
             logger.info(f"预览窗口：{handle}")
         else:
             logger.warning("未选中窗口")
-            ms.main.qmessagbox_update.emit("ERROR", "未选中窗口")
+            signal_manager.main.message_box_requested.emit(MessageBoxPayload.error("未选中窗口"))
 
     def apply_selected_window(self):
         """应用选中的窗口"""
@@ -706,7 +724,7 @@ class MainWindow(FluentWindow):
             logger.info(f"应用选中的窗口：{handle}")
         else:
             logger.warning("未选中窗口")
-            ms.main.qmessagbox_update.emit("ERROR", "未选中窗口")
+            signal_manager.main.message_box_requested.emit(MessageBoxPayload.error("未选中窗口"))
 
     def app_restart_handle(self):
         Restart().app_restart()

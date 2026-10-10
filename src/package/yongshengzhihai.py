@@ -14,11 +14,11 @@ class YongShengZhiHai(BasePackage):
 
     scene_name = "永生之海副本"
     resource_path = "yongshengzhihai"
-    resource_list = [
+    resource_list = (
         "title_team",  # 组队界面
         "passenger",  # 队员
         "start_team",  # 组队挑战
-    ]
+    )
 
     @log_function_call
     def __init__(self, n: int = 0) -> None:
@@ -47,10 +47,10 @@ class YongShengZhiHaiTeam(YongShengZhiHai):
     """组队永生之海副本"""
 
     scene_name = "组队永生之海副本"
-    resource_list = [
+    resource_list = (
         "title_team",  # 组队界面
         "start_team",  # 组队挑战
-    ]
+    )
 
     @log_function_call
     def __init__(
@@ -84,6 +84,8 @@ class YongShengZhiHaiTeam(YongShengZhiHai):
             if not RuleImage(self.IMAGE_PASSENGER).match():
                 logger.ui("队员就位")
                 return True
+
+            self.sleep_interval()
 
     @log_function_call
     def check_fighting(self):

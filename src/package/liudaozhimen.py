@@ -1,6 +1,6 @@
 from enum import Enum
 
-from ..utils.adapter import KeyBoard, Mouse
+from ..utils.adapter import Mouse
 from ..utils.event import event_thread
 from ..utils.exception import GUIStopException
 from ..utils.function import finish_random_left_right, sleep
@@ -60,7 +60,7 @@ class LiuDaoZhiMen(BasePackage):
 
     scene_name = "六道之门速刷"
     resource_path = "liudaozhimen"
-    resource_list: list = [
+    resource_list = (
         "determine",  # 确定
         "fight",  # 挑战
         "fight_choose_skill_refresh",  # 选择技能-刷新
@@ -69,7 +69,7 @@ class LiuDaoZhiMen(BasePackage):
         "open",  # 开启宝箱
         "shop_refresh",  # 商店刷新
         "start",  # 开启挑战
-    ]
+    )
     title_list: list = ["月之海", "香行域", "错季森", "净佛刹", "真言塔", "孔雀国"]
     """六道列表"""
     ocr_score: float = 0.7
@@ -118,6 +118,7 @@ class LiuDaoZhiMen(BasePackage):
 
                 data = self.check_result_mult(self.title_list)
                 if data is None:
+                    self.sleep_interval()
                     continue
                 if data.text == self.title_list[0]:
                     Mouse.click(data.center)
@@ -274,7 +275,7 @@ class LiuDaoZhiMen(BasePackage):
                         continue
                     if item.text == self.basic_skill_name:
                         self.check_click(self.IMAGE_IMITATION, timeout=3)
-                        KeyBoard.enter(2)
+                        self.confirm(delay=2)
                         self.skill_level_count.add()
                         sleep(4)
                         Mouse.click()
@@ -328,7 +329,7 @@ class LiuDaoZhiMen(BasePackage):
                 if item.text == self.basic_skill_name:
                     logger.ui_hint(f"选择技能「{self.basic_skill_name}」")
                     Mouse.click(item.center)
-                    KeyBoard.enter(1)
+                    self.confirm(delay=1)
                     self.skill_level_count.add()
                     break
 
@@ -336,7 +337,7 @@ class LiuDaoZhiMen(BasePackage):
             sleep(2)
             logger.ui(f"刷新商店 第{i + 1}次")
             self.check_click(self.IMAGE_SHOP_REFRESH)
-            KeyBoard.enter(1)  # 可能没有「不再提示」
+            self.confirm(delay=1, timeout=0)  # 可能没有「不再提示」
 
         leave()
 
@@ -468,7 +469,7 @@ class LiuDaoZhiMen(BasePackage):
                 for item in result:
                     if item.text == "放弃前行":
                         Mouse.click(item.center)
-                        KeyBoard.enter(1)
+                        self.confirm(delay=1)
                         break
 
             # 结算

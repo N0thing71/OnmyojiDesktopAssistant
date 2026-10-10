@@ -1,4 +1,5 @@
 from ..utils.adapter import Mouse
+from ..utils.coordinate import reference_size
 from ..utils.decorator import log_function_call
 from ..utils.event import event_thread
 from ..utils.exception import DailyLimitException, GUIStopException
@@ -6,7 +7,6 @@ from ..utils.function import finish_random_left_right, random_normal, random_num
 from ..utils.image import RuleImage, check_image_once
 from ..utils.log import logger
 from ..utils.point import Point
-from ..utils.window import window_manager
 from .base_package import BasePackage
 
 
@@ -15,7 +15,7 @@ class TanSuo(BasePackage):
 
     scene_name = "探索"
     resource_path = "tansuo"
-    resource_list = [
+    resource_list = (
         "chuzhanxiaohao",
         "fighting",
         "fighting_boss",
@@ -25,7 +25,7 @@ class TanSuo(BasePackage):
         "tansuo_28_0",
         "tansuo_28_title",
         "treasure_box",
-    ]
+    )
 
     @log_function_call
     def __init__(self, n: int = 0, temp_pop: bool = False) -> None:
@@ -100,7 +100,7 @@ class TanSuo(BasePackage):
             )
             if _result:
                 flag_done = True
-                logger.ui_warn(f"战斗结束{('（' + _result.description + '）') if _result.description else ''}")
+                logger.ui(f"战斗结束{('（' + _result.description + '）') if _result.description else ''}")
                 if point is None:
                     point = finish_random_left_right()
                 else:
@@ -141,11 +141,15 @@ class TanSuo(BasePackage):
                 if image_start.match():
                     logger.ui("探索结束")
                 # 宝箱
-                elif image_treasure_box.match():
+                elif image_treasure_box.match(logger_lever="ERROR"):
                     Mouse.click(image_treasure_box.center_point())
                     logger.info("获得宝箱")
                     Mouse.click(wait=2)
+                else:
+                    logger.ui_warn("未发现宝箱")
+
                 # 不管有没有宝箱，都退出这次探索
+                logger.ui("本轮探索结束")
                 return
 
     def run(self):
@@ -204,8 +208,8 @@ class TanSuo(BasePackage):
                             sleep()
                             y1 = 300
                             y2 = 550
-                            x_middle = window_manager.current.window_width // 2
-                            x_right = int(window_manager.current.window_width * 0.9)
+                            x_middle = reference_size()[0] // 2
+                            x_right = int(reference_size()[0] * 0.9)
                             x = random_normal(x_middle, x_right)
                             # 移动到窗口中心线右侧
                             Mouse.move(

@@ -1,7 +1,7 @@
 import time
 from typing import Literal
 
-from ..utils.adapter import Mouse
+from ..utils.adapter import KeyBoard, Mouse
 from ..utils.application import SCREENSHOT_DIR_PATH
 from ..utils.assets import AssetOcr
 from ..utils.config import InteractionMode, config
@@ -11,9 +11,9 @@ from ..utils.exception import CustomException, GUIStopException
 from ..utils.function import finish_random_left_right, prevent_sleep, sleep
 from ..utils.image import AssetImage, RuleImage
 from ..utils.log import logger
-from ..utils.mysignal import global_ms as ms
 from ..utils.paddleocr import RuleOcr
 from ..utils.screenshot import ScreenShot
+from ..utils.signals import signal_manager
 from ..utils.toast import toast
 from ..utils.window import window_manager
 from .global_resource import GlobalResource
@@ -25,7 +25,7 @@ class BasePackage:
     """名称"""
     resource_path: str = ""
     """路径"""
-    resource_list: list = []
+    resource_list: tuple = ()
     """资源列表"""
     init: bool = False
     """初始化"""
@@ -94,6 +94,10 @@ class BasePackage:
         for item in self.current_asset_list:
             logger.info(item)
 
+    def sleep_interval(self):
+        """按设置项「截图时间间隔」等待（秒）"""
+        time.sleep(config.user.screenshot_interval / 1000.0)
+
     @log_function_call
     def check_title(self):
         """检查主场景"""
@@ -127,6 +131,8 @@ class BasePackage:
             if msg_title:
                 self.title_error_msg()
                 msg_title = False
+
+            self.sleep_interval()
 
     def check_click(
         self,
@@ -163,6 +169,56 @@ class BasePackage:
                     Mouse.click(result.center, *args, **kwargs)
                     return True
 
+            self.sleep_interval()
+
+    def click_confirm(self, timeout: float = 0) -> bool:
+        """OCR 识别并点击「确定/确认」按钮
+
+        模拟器下键盘回车不可用，用点击替代；一次 OCR 同时匹配两个关键词。
+
+        Args:
+            timeout (float): 超时时间，0 表示只识别一次
+
+        Returns:
+            bool: 是否识别并点击成功
+        """
+        assets = (self.global_assets.OCR_CONFIRM, self.global_assets.OCR_CONFIRM_2)
+        start_time = time.time()
+        while True:
+            if bool(event_thread):
+                raise GUIStopException
+
+            ocr_result = RuleOcr().get_raw_result()
+            for asset in assets:
+                result = RuleOcr(asset).match(ocr_result=ocr_result)
+                if result is not None:
+                    Mouse.click(result.center)
+                    logger.ui(f"点击「{result.text}」")
+                    return True
+
+            if timeout <= 0 or time.time() - start_time > timeout:
+                if timeout > 0:
+                    logger.ui_warn("未识别到「确认」按钮")
+                return False
+            sleep()
+
+    def confirm(self, delay: float = 0, timeout: float = 3) -> bool:
+        """确认弹窗：模拟器走 OCR 点击「确认」，桌面版走回车
+
+        Args:
+            delay (float): 前置等待时间
+            timeout (float): 模拟器下的识别超时
+
+        Returns:
+            bool: 桌面版始终为 True；模拟器为是否点击成功
+        """
+        if window_manager.is_emulator:
+            if delay:
+                time.sleep(delay)
+            return self.click_confirm(timeout=timeout)
+        KeyBoard.enter(delay)
+        return True
+
     @log_function_call
     def wait_passengers_on_position(self, passengers: int = 2):
         """等待队员就位，需要在组队界面，
@@ -182,6 +238,8 @@ class BasePackage:
             elif not RuleImage(self.global_assets.IMAGE_PASSENGER_2).match():
                 logger.ui("队员2 就位")
                 return True
+
+            self.sleep_interval()
 
     def start(self, *args, **kwargs) -> None:
         """挑战开始"""
@@ -308,6 +366,8 @@ class BasePackage:
                     logger.ui_warn(f"战斗失败（{rule.description}）")
                     return False
 
+            self.sleep_interval()
+
     @log_function_call
     def check_finish(self, timeout: int = 0) -> bool:
         """结束判断（不判断胜利）
@@ -357,6 +417,8 @@ class BasePackage:
                 if rule.match(_screenshot):
                     logger.ui_warn(f"战斗失败（{rule.description}）")
                     return False
+
+            self.sleep_interval()
 
     @log_function_call
     def ensure_finish(self):
@@ -417,7 +479,7 @@ class BasePackage:
         """任务开始"""
 
         # 禁用按钮
-        ms.main.is_fighting_update.emit(True)
+        signal_manager.main.is_fighting_changed.emit(True)
         _start = time.perf_counter()
         if self.max:
             logger.progress(f"0/{self.max}")
@@ -456,7 +518,7 @@ class BasePackage:
             config.runtime.xuanshangfengyin.reset()
 
         # 启用按钮
-        ms.main.is_fighting_update.emit(False)
+        signal_manager.main.is_fighting_changed.emit(False)
         logger.ui(f"已完成 {self.scene_name} {self.n}次")
         # 系统通知
         # 5s结束，保留至通知中心

@@ -12,4 +12,14 @@ doc
 lib
 log
 models
+profiles
 releases
+pytest-of-*/
+# SDD 工作区/未来 worktree（忽略）
+.superpowers/
+.worktrees/
+
+.venv/
+
+.idea/
+.codegraph/
